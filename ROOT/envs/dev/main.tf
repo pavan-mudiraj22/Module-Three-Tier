@@ -22,15 +22,14 @@ vpc_id            = module.vpc.vpc_id
  allowed_ssh_cidr = ["0.0.0.0/0"]   
 }
 
-
 # ────────────────────────────
 # frontend ec2 instance public
 # ─────────────────────────────
 module "frontend-ec2" {
 source = "../../modules/frontend/ec2"
 aws_region = "us-east-1"
-ami = "ami-00ca32bbc84273381"
-instance_type = "t2.micro"
+ami = "ami-0567589d25e06853e"
+instance_type = "t3.small"
 key_name = "us-east-1"
 subnet_id = module.vpc.public_subnets[0]
 security_group_id = module.vpc.bastion_sg_id
@@ -43,8 +42,8 @@ security_group_id = module.vpc.bastion_sg_id
 module "backend-ec2" {
 source = "../../modules/backend/ec2"
 aws_region = "us-east-1"
-ami = "ami-00ca32bbc84273381"
-instance_type = "t2.micro"
+ami = "ami-0567589d25e06853e"
+instance_type = "t3.small"
 key_name = "us-east-1"
 subnet_id = module.vpc.public_subnets[0]
 security_group_id = module.vpc.bastion_sg_id
@@ -56,8 +55,8 @@ security_group_id = module.vpc.bastion_sg_id
 module "bastion" {
 source = "../../modules/bastion"
 aws_region = "us-east-1"
-ami = "ami-00ca32bbc84273381"
-instance_type = "t2.micro"
+ami = "ami-0567589d25e06853e"
+instance_type = "t3.small"
 key_name = "us-east-1"
 subnet_id = module.vpc.public_subnets[0]
 security_group_id = module.vpc.bastion_sg_id
@@ -107,18 +106,16 @@ instance_class    = "db.t3.micro"
 multi_az          = false
 db_name           = "bookdb"
 db_username       = "admin"
-db_password       = "SuperSecretPass123"
+db_password       = "admin123"
 db_subnet_1_id    = module.vpc.private_db_subnets[0]
 db_subnet_2_id    = module.vpc.private_db_subnets[1]
 rds_sg_id         = module.vpc.database_sg_id
 
 }
 
-
-
-# ─────────────────────────────
-# Frontend Launch Template
-# ─────────────────────────────
+# # ─────────────────────────────
+# # Frontend Launch Template
+# # ─────────────────────────────
 module "frontend_launchtemplate" {
 
 source        = "../../modules/frontend/launch-template"
@@ -126,7 +123,7 @@ source        = "../../modules/frontend/launch-template"
 aws_region   = "us-east-1"
 project_name   = "three-tier"
 #frontend_ami   = module.frontend_launchtemplate.ami.id
-instance_type  = "t3.micro"
+instance_type  = "t3.small"
 frontend_sg_id = module.vpc.frontend_server_sg_id
 key_name       = "us-east-1"
 instanceid = module.frontend-ec2.frontend_instanceid
@@ -142,7 +139,7 @@ source        = "../../modules/backend/launch-template"
 aws_region   = "us-east-1"
 project_name   = "three-tier"
 #backend_ami    = module.backend_launchtemplate.ami.id
-instance_type  = "t3.micro"
+instance_type  = "t3.small"
 backend_sg_id  = module.vpc.backend_server_sg_id
 key_name       = "us-east-1"
 instanceid = module.backend-ec2.backend_instanceid
@@ -196,4 +193,16 @@ frontend_max_size         = 3
 # Scaling
 scale_out_target_value = 80
 
+}
+
+module "route53" {
+  source = "../../modules/route53"
+
+  domain_name = "pavanonline.website"
+
+  frontend_alb_dns_name = module.frontend_alb.alb_dns_name
+  frontend_alb_zone_id  = module.frontend_alb.alb_zone_id
+
+  backend_alb_dns_name = module.backend_alb.alb_dns_name
+  backend_alb_zone_id  = module.backend_alb.alb_zone_id
 }

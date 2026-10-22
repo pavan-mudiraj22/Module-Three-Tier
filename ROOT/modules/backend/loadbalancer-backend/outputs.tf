@@ -6,6 +6,10 @@ output "alb_dns_name" {
   value = aws_lb.back_end.dns_name
 }
 
+output "alb_zone_id" {
+  value = aws_lb.back_end.zone_id
+}
+
 output "alb_target_group_arn" {
   value = aws_lb_target_group.back_end.arn
 }
