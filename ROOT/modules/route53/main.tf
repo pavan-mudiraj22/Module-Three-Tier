@@ -1,9 +1,10 @@
-resource "aws_route53_zone" "main" {
-  name = var.domain_name
+data "aws_route53_zone" "main" {
+  name         = "${var.domain_name}."
+  private_zone = false
 }
 
 resource "aws_route53_record" "frontend" {
-  zone_id = aws_route53_zone.main.zone_id
+  zone_id = data.aws_route53_zone.main.zone_id
   name    = var.domain_name
   type    = "A"
 
@@ -15,7 +16,7 @@ resource "aws_route53_record" "frontend" {
 }
 
 resource "aws_route53_record" "backend" {
-  zone_id = aws_route53_zone.main.zone_id
+  zone_id = data.aws_route53_zone.main.zone_id
   name    = "api.${var.domain_name}"
   type    = "A"
 

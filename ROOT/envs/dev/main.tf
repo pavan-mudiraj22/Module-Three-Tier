@@ -206,3 +206,26 @@ module "route53" {
   backend_alb_dns_name = module.backend_alb.alb_dns_name
   backend_alb_zone_id  = module.backend_alb.alb_zone_id
 }
+
+module "iam_ec2" {
+  source = "../../modules/iam/ec2-role"
+
+  project_name = "three-tier-dev"
+}
+
+module "secrets_manager" {
+  source = "../../modules/secrets-manager"
+
+  project_name = "three-tier-dev"
+  db_username  = var.db_username
+  db_password  = var.db_password
+}
+
+module "acm" {
+  source       = "../../modules/acm"
+  domain_name  = "pavanonline.website"
+
+  subject_alternative_names = [
+    "www.pavanonline.website"
+  ]
+}
