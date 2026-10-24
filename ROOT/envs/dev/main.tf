@@ -33,6 +33,7 @@ instance_type = "t3.small"
 key_name = "us-east-1"
 subnet_id = module.vpc.public_subnets[0]
 security_group_id = module.vpc.bastion_sg_id
+cloudwatch_instance_profile = module.monitoring.instance_profile_name
 
 }
 
@@ -47,6 +48,7 @@ instance_type = "t3.small"
 key_name = "us-east-1"
 subnet_id = module.vpc.public_subnets[0]
 security_group_id = module.vpc.bastion_sg_id
+
 
 }
 # ────────────────────────────
@@ -68,13 +70,12 @@ security_group_id = module.vpc.bastion_sg_id
 # ─────────────────────────────
 module "frontend_alb" {
 source = "../../modules/frontend/loadbalancer-frontend"
-aws_region = "us-east-1"
 vpc_id = module.vpc.vpc_id
 subnets = module.vpc.public_subnets
 security_group_id = module.vpc.alb_frontend_sg_id
 alb_name = "frontend-alb"
 target_group_name = "frontend-tg"
-
+certificate_arn = data.aws_acm_certificate.existing.arn
 }
 
 # ─────────────────────────────
@@ -113,119 +114,130 @@ rds_sg_id         = module.vpc.database_sg_id
 
 }
 
+# # # ─────────────────────────────
+# # # Frontend Launch Template
+# # # ─────────────────────────────
+# module "frontend_launchtemplate" {
+
+# source        = "../../modules/frontend/launch-template"
+# #source = "../../modules/frontend/launch-template"
+# aws_region   = "us-east-1"
+# project_name   = "three-tier"
+# #frontend_ami   = module.frontend_launchtemplate.ami.id
+# instance_type  = "t3.small"
+# frontend_sg_id = module.vpc.frontend_server_sg_id
+# key_name       = "us-east-1"
+# instanceid = module.frontend-ec2.frontend_instanceid
+
+# }
 # # ─────────────────────────────
-# # Frontend Launch Template
+# # Backend Launch Template
 # # ─────────────────────────────
-module "frontend_launchtemplate" {
+# module "backend_launchtemplate" {
 
-source        = "../../modules/frontend/launch-template"
-#source = "../../modules/frontend/launch-template"
-aws_region   = "us-east-1"
-project_name   = "three-tier"
-#frontend_ami   = module.frontend_launchtemplate.ami.id
-instance_type  = "t3.small"
-frontend_sg_id = module.vpc.frontend_server_sg_id
-key_name       = "us-east-1"
-instanceid = module.frontend-ec2.frontend_instanceid
+# source        = "../../modules/backend/launch-template"
+# #source = "../../modules/backend/launch-template"
+# aws_region   = "us-east-1"
+# project_name   = "three-tier"
+# #backend_ami    = module.backend_launchtemplate.ami.id
+# instance_type  = "t3.small"
+# backend_sg_id  = module.vpc.backend_server_sg_id
+# key_name       = "us-east-1"
+# instanceid = module.backend-ec2.backend_instanceid
 
+# }
+
+# # ────────────────────────────
+# # Auto Scaling Group backend
+# # ─────────────────────────────
+
+# module "asg-backend" {
+# source     = "../../modules/backend/asg"
+# #source = "../../modules/backend/asg"
+# aws_region = "us-east-1"
+# project_name = "books-three-tier"
+
+
+# # Backend
+# backend_launch_template_id = module.backend_launchtemplate.backend_launch_template_id
+# app_subnet_1_id            = module.vpc.private_app_subnets[0]
+# app_subnet_2_id            = module.vpc.private_app_subnets[1]
+# backend_target_group_arn   = module.backend_alb.alb_target_group_arn
+# backend_desired_capacity = 1
+# backend_min_size         = 1
+# backend_max_size         = 3
+# # Scaling
+# scale_out_target_value = 80
+
+# }
+
+# # ────────────────────────────
+# # Auto Scaling Group frontend
+# # ─────────────────────────────
+
+# module "asg-frontend" {
+# source     = "../../modules/frontend/asg"
+# # source = "../../modules/frontend/asg"
+# aws_region = "us-east-1"
+# project_name = "books-three-tier"
+
+# # Frontend
+# frontend_launch_template_id = module.frontend_launchtemplate.frontend_launch_template_id
+# web_subnet_1_id             = module.vpc.public_subnets[0]
+# web_subnet_2_id             = module.vpc.public_subnets[1]
+# frontend_target_group_arn   = module.frontend_alb.alb_target_group_arn
+
+# frontend_desired_capacity = 1
+# frontend_min_size         = 1
+# frontend_max_size         = 3
+
+# # Scaling
+# scale_out_target_value = 80
+
+# }
+data "aws_acm_certificate" "existing" {
+  provider    = aws
+  domain      = "pavanonline.website"
+  statuses    = ["ISSUED"]
+  most_recent = true
 }
-# ─────────────────────────────
-# Backend Launch Template
-# ─────────────────────────────
-module "backend_launchtemplate" {
+# module "route53" {
+#   source = "../../modules/route53"
 
-source        = "../../modules/backend/launch-template"
-#source = "../../modules/backend/launch-template"
-aws_region   = "us-east-1"
-project_name   = "three-tier"
-#backend_ami    = module.backend_launchtemplate.ami.id
-instance_type  = "t3.small"
-backend_sg_id  = module.vpc.backend_server_sg_id
-key_name       = "us-east-1"
-instanceid = module.backend-ec2.backend_instanceid
+#   domain_name = "pavanonline.website"
 
-}
+#   frontend_alb_dns_name = module.frontend_alb.alb_dns_name
+#   frontend_alb_zone_id  = module.frontend_alb.alb_zone_id
 
-# ────────────────────────────
-# Auto Scaling Group backend
-# ─────────────────────────────
+#   backend_alb_dns_name = module.backend_alb.alb_dns_name
+#   backend_alb_zone_id  = module.backend_alb.alb_zone_id
+# }
 
-module "asg-backend" {
-source     = "../../modules/backend/asg"
-#source = "../../modules/backend/asg"
-aws_region = "us-east-1"
-project_name = "books-three-tier"
+# module "iam_ec2" {
+#   source = "../../modules/iam/ec2-role"
+
+#   project_name = "three-tier-dev"
+# }
+
+# module "secrets_manager" {
+#   source = "../../modules/secrets-manager"
+
+#   project_name = "three-tier-dev"
+#   db_username  = var.db_username
+#   db_password  = var.db_password
+# }
+
+# module "acm" {
+#   source       = "../../modules/acm"
+#   domain_name  = "pavanonline.website"
+
+#   subject_alternative_names = [
+#     "www.pavanonline.website"
+#   ]
+# }
 
 
-# Backend
-backend_launch_template_id = module.backend_launchtemplate.backend_launch_template_id
-app_subnet_1_id            = module.vpc.private_app_subnets[0]
-app_subnet_2_id            = module.vpc.private_app_subnets[1]
-backend_target_group_arn   = module.backend_alb.alb_target_group_arn
-backend_desired_capacity = 1
-backend_min_size         = 1
-backend_max_size         = 3
-# Scaling
-scale_out_target_value = 80
-
-}
-
-# ────────────────────────────
-# Auto Scaling Group frontend
-# ─────────────────────────────
-
-module "asg-frontend" {
-source     = "../../modules/frontend/asg"
-# source = "../../modules/frontend/asg"
-aws_region = "us-east-1"
-project_name = "books-three-tier"
-
-# Frontend
-frontend_launch_template_id = module.frontend_launchtemplate.frontend_launch_template_id
-web_subnet_1_id             = module.vpc.public_subnets[0]
-web_subnet_2_id             = module.vpc.public_subnets[1]
-frontend_target_group_arn   = module.frontend_alb.alb_target_group_arn
-
-frontend_desired_capacity = 1
-frontend_min_size         = 1
-frontend_max_size         = 3
-
-# Scaling
-scale_out_target_value = 80
-
-}
-
-module "route53" {
-  source = "../../modules/route53"
-
-  domain_name = "pavanonline.website"
-
-  frontend_alb_dns_name = module.frontend_alb.alb_dns_name
-  frontend_alb_zone_id  = module.frontend_alb.alb_zone_id
-
-  backend_alb_dns_name = module.backend_alb.alb_dns_name
-  backend_alb_zone_id  = module.backend_alb.alb_zone_id
-}
-
-module "iam_ec2" {
-  source = "../../modules/iam/ec2-role"
-
+module "monitoring" {
+  source       = "../../modules/monitoring"
   project_name = "three-tier-dev"
-}
-
-module "secrets_manager" {
-  source = "../../modules/secrets-manager"
-
-  project_name = "three-tier-dev"
-  db_username  = var.db_username
-  db_password  = var.db_password
-}
-
-module "acm" {
-  source       = "../../modules/acm"
-  domain_name  = "pavanonline.website"
-
-  subject_alternative_names = [
-    "www.pavanonline.website"
-  ]
 }

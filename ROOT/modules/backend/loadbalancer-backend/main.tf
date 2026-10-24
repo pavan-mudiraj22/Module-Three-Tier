@@ -1,3 +1,4 @@
+
 resource "aws_lb_target_group" "back_end" {
   name     = var.target_group_name
   port     = 80
@@ -15,7 +16,6 @@ resource "aws_lb" "back_end" {
   tags = {
     Name = var.alb_name
   }
-  depends_on = [aws_lb_target_group.back_end]
 }
 
 resource "aws_lb_listener" "back_end" {
@@ -27,5 +27,4 @@ resource "aws_lb_listener" "back_end" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.back_end.arn
   }
-  depends_on = [aws_lb_target_group.back_end]
 }

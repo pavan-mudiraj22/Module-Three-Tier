@@ -29,3 +29,7 @@ variable "security_group_id" {
   description = "Security group ID for the bastion host"
   type        = string
 }
+variable "cloudwatch_instance_profile" {
+  description = "IAM instance profile for CloudWatch monitoring"
+  type        = string
+}

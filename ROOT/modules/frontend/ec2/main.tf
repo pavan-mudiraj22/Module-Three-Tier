@@ -15,6 +15,7 @@ resource "aws_instance" "frontend" {
               EOF
   tags = {
     Name = "frontend-public"
+    iam_instance_profile = var.cloudwatch_instance_profile
   }
 
   }
