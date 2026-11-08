@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Three-Tier Task Board</title>
+    <style>
+      :root { font-family: system-ui, sans-serif; color: #172033; background: #f3f6fb; }
+      body { margin: 0; }
+      main { max-width: 700px; margin: 48px auto; padding: 0 18px; }
+      header { margin-bottom: 24px; }
+      header p, footer { color: #667085; }
+      .card { background: white; border: 1px solid #e6eaf0; border-radius: 14px; padding: 22px; margin: 16px 0; }
+      form.add { display: flex; gap: 10px; }
+      input[type=text] { flex: 1; min-width: 0; padding: 11px; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; }
+      button { padding: 10px 14px; border: 0; border-radius: 8px; background: #2563eb; color: white; font: inherit; cursor: pointer; }
+      button.delete { background: #fff; color: #b42318; }
+      ul { padding: 0; list-style: none; }
+      li { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #eaecf0; padding: 12px 0; }
+      li label { display: flex; align-items: center; gap: 10px; overflow-wrap: anywhere; }
+      .done { text-decoration: line-through; color: #98a2b3; }
+      .flash { padding: 10px; border-radius: 8px; background: #eff6ff; }
+      .flash.error { color: #b42318; background: #fef3f2; }
+      footer { text-align: center; font-size: .9rem; }
+      @media (max-width: 480px) { form.add { flex-direction: column; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p>THREE-TIER DEMO</p>
+        <h1>Task board</h1>
+        <p>Python frontend · Java REST API</p>
+      </header>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}<p class="flash {{ category }}" role="status">{{ message }}</p>{% endfor %}
+      {% endwith %}
+      <section class="card">
+        <h2>Add a task</h2>
+        <form class="add" action="{{ url_for('create_task') }}" method="post">
+          <label for="title" class="visually-hidden">Task title</label>
+          <input id="title" name="title" maxlength="200" placeholder="What needs to be done?" required>
+          <button type="submit">Add task</button>
+        </form>
+      </section>
+      <section class="card">
+        <h2>Your tasks</h2>
+        {% if tasks %}
+          <ul>
+            {% for task in tasks %}
+              <li>
+                <form action="{{ url_for('toggle_task', task_id=task.id) }}" method="post">
+                  <input type="hidden" name="completed" value="{{ 'true' if task.completed else 'false' }}">
+                  <button type="submit" aria-label="Mark {{ task.title }} as {{ 'not done' if task.completed else 'done' }}">{{ 'Undo' if task.completed else 'Done' }}</button>
+                </form>
+                <span class="{{ 'done' if task.completed else '' }}">{{ task.title }}</span>
+                <form action="{{ url_for('delete_task', task_id=task.id) }}" method="post">
+                  <button class="delete" type="submit">Delete</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>No tasks yet, or the API is unavailable. Add a task to get started.</p>
+        {% endif %}
+      </section>
+      <footer>Built for the Module-Three-Tier Terraform project.</footer>
+    </main>
+  </body>
+</html>
