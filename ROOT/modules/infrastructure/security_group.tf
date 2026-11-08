@@ -1,20 +1,13 @@
 # Bastion Host SG
 resource "aws_security_group" "bastion_host" {
   name        = "bastion-host-sg"
-  description = "Allow SSH from allowed CIDRs"
-  vpc_id      = var.vpc_id
+  description = "Allow SSH from trusted admin IPs"
+  vpc_id      = aws_vpc.three_tier.id
 
   ingress {
-    description = "Allow SSH"
+    description = "Allow SSH from admin IP"
     from_port   = 22
     to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_ssh_cidr
-  }
-  ingress {
-    description = "Allow SSH"
-    from_port   = 80
-    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = var.allowed_ssh_cidr
   }
@@ -34,12 +27,12 @@ resource "aws_security_group" "bastion_host" {
 # ALB Frontend SG
 resource "aws_security_group" "alb_frontend" {
   name        = "alb-frontend-sg"
-  description = "Allow HTTP/HTTPS from public"
-  vpc_id      = var.vpc_id
+  description = "Allow public HTTP/HTTPS traffic to the frontend ALB"
+  vpc_id      = aws_vpc.three_tier.id
 
   ingress = [
     for port in [80, 443] : {
-      description      = "Allow HTTP/HTTPS"
+      description      = "Allow HTTP/HTTPS from public internet"
       from_port        = port
       to_port          = port
       protocol         = "tcp"
@@ -66,12 +59,12 @@ resource "aws_security_group" "alb_frontend" {
 # ALB Backend SG
 resource "aws_security_group" "alb_backend" {
   name        = "alb-backend-sg"
-  description = "Allow HTTP/HTTPS for backend"
-  vpc_id      = var.vpc_id
+  description = "Allow public HTTP/HTTPS traffic to the backend ALB"
+  vpc_id      = aws_vpc.three_tier.id
 
   ingress = [
     for port in [80, 443] : {
-      description      = "Allow HTTP/HTTPS"
+      description      = "Allow HTTP/HTTPS from public internet"
       from_port        = port
       to_port          = port
       protocol         = "tcp"
@@ -98,22 +91,24 @@ resource "aws_security_group" "alb_backend" {
 # Frontend Server SG
 resource "aws_security_group" "frontend_server" {
   name        = "frontend-server-sg"
-  description = "Allow SSH + HTTP for frontend servers"
-  vpc_id      = var.vpc_id
+  description = "Allow SSH and HTTP traffic from admin IP and ALB"
+  vpc_id      = aws_vpc.three_tier.id
 
-  ingress = [
-    for port in [22, 80] : {
-      description      = "Allow SSH/HTTP"
-      from_port        = port
-      to_port          = port
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = []
-      prefix_list_ids  = []
-      security_groups  = []
-      self             = false
-    }
-  ]
+  ingress {
+    description = "SSH from admin IP"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_ssh_cidr
+  }
+
+  ingress {
+    description     = "HTTP from frontend ALB"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_frontend.id]
+  }
 
   egress {
     from_port   = 0
@@ -130,22 +125,24 @@ resource "aws_security_group" "frontend_server" {
 # Backend Server SG
 resource "aws_security_group" "backend_server" {
   name        = "backend-server-sg"
-  description = "Allow SSH + HTTP for backend servers"
-  vpc_id      = var.vpc_id
+  description = "Allow SSH and backend traffic from admin IP and ALB"
+  vpc_id      = aws_vpc.three_tier.id
 
-  ingress = [
-    for port in [22, 80] : {
-      description      = "Allow SSH/HTTP"
-      from_port        = port
-      to_port          = port
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = []
-      prefix_list_ids  = []
-      security_groups  = []
-      self             = false
-    }
-  ]
+  ingress {
+    description = "SSH from admin IP"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_ssh_cidr
+  }
+
+  ingress {
+    description     = "Backend app traffic from backend ALB"
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_backend.id]
+  }
 
   egress {
     from_port   = 0
@@ -162,15 +159,15 @@ resource "aws_security_group" "backend_server" {
 # Database SG
 resource "aws_security_group" "database" {
   name        = "database-sg"
-  description = "Allow MySQL access"
-  vpc_id      = var.vpc_id
+  description = "Allow MySQL access only from the backend server"
+  vpc_id      = aws_vpc.three_tier.id
 
   ingress {
-    description = "MySQL/Aurora"
-    from_port   = 3306
-    to_port     = 3306
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # (Better: restrict to backend SG only)
+    description     = "MySQL/Aurora from backend server"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.backend_server.id]
   }
 
   egress {

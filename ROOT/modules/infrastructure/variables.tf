@@ -34,15 +34,8 @@ variable "private_subnet_6_cidr" { type = string }
 variable "availability_zone_1a" { type = string }
 variable "availability_zone_1b" { type = string }
 
-
-
-
-variable "vpc_id" {
-  description = "VPC ID where security groups will be created"
-  type        = string
-}
 variable "allowed_ssh_cidr" {
-  description = "CIDR block allowed for SSH access"
+  description = "CIDR blocks allowed for SSH access. Replace this with a trusted admin IP before deployment."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = []
 }
